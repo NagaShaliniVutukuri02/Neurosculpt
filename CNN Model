@@ -1,0 +1,94 @@
+import pandas as pd import cv2 
+import numpy as np 
+def load_dataset(csv_file, image_dir, image_size):  
+  annotations = pd.read_csv(csv_file) 
+  images = []        
+  boxes = [] 
+  for _, row in annotations.iterrows():        
+    filename = row['filename’] 
+    if not isinstance(filename, str):        
+      continue 
+      img_path = os.path.join(image_dir, filename)  
+      img = cv2.imread(img_path) 
+      if img is None: 
+        continue 
+        img = cv2.resize(img, image_size)  
+        img = img / 255.0 
+xmin = row['xmin'] / img.shape[1] 
+ymin = row['ymin'] / img.shape[0]  
+xmax = row['xmax'] / img.shape[1]  
+ymax = row['ymax'] / img.shape[0]  
+box = [xmin, ymin, xmax, ymax]  
+images.append(img)  
+boxes.append(box) 
+return np.array(images), np.array(boxes)  
+import os 
+os.listdir() 
+image_size = (224, 224) 
+train_images, train_boxes = load_dataset('Brain_Tumour.v3i.tensorflow/train/_annotations. csv','Brain_Tumour.v3i.tensorflow/train', image_size) 
+valid_boxes= valid_images, load_dataset('Brain_Tumour.v3i.tensorflow/valid/_annotations. csv','Brain_mour.v3i.tensorflow/valid', image_size) 
+test_images, test_boxes = load_dataset('Brain_Tumour.v3i.tensorflow/test/_annotations.csv','Brain_Tumour.v3i.tensorflow/test', image_size) 
+train_images.shape;train_boxes.shape 
+from tensorflow.keras.utils import Sequence  
+import pandas as pd 
+import cv2 
+import numpy as np 
+import os 
+class ImageDataGenerator(Sequence):  
+  def  _init_(self, csv_file, image_dir, batch_size=32,image_size=(224,224)):  
+    self.df = pd.read_csv(csv_file) 
+    self.df = self.df.dropna(subset=['filename’])  
+    self.df['filename'] = self.df['filename'].astype(str)  
+    self.image_dir = image_dir 
+    self.batch_size = batch_size  
+    self.image_size = image_size  
+    self.indices = np.arange(len(self.df)) 
+  def _len_(self): 
+    return int(np.ceil(len(self.df) / self.batch_size))  
+    def  getitem (self, index): 
+      batch_indices = self.indices[index * self.batch_size:(index+1)*self.batch_size] 
+      batch_images = []              
+      batch_boxes = [] 
+      for i in batch_indices:  
+        row = self.df.iloc[i] 
+        img_path = os.path.join(self.image_dir, row['filename’]) 
+        img =cv2.imread(img_path)                
+        if img is None:
+            continue
+            img = cv2.resize(img, self.image_size)  
+            img = img / 255.0 
+xmin = row['xmin'] / img.shape[1]  
+ymin = row['ymin'] / img.shape[0]  
+xmax = row['xmax'] / img.shape[1]  
+ymax = row['ymax'] / img.shape[0]  
+box = [xmin, ymin, xmax, ymax] 
+batch_images.append(img) 
+batch_boxes.append(box) 
+return np.array(batch_images), np.array(batch_boxes)  
+train_generator = ImageDataGenerator('Brain_Tumour.v3i.tensorflow/train/_annotations. csv', 'Brain_Tumour.v3i.tensorflow/train', batch_size=32, image_size=(224, 224)) 
+valid_generator = ImageDataGenerator('Brain_Tumour.v3i.tensorflow/valid/_annot ations. csv', 'Brain_Tumour.v3i.tensorflow/valid', batch_size=32, image_size=(224, 224)) 
+from tensorflow.keras import layers, models  
+def create_cnn(input_shape): 
+  model=models.Sequential([layers.Conv2D(32,(3,3), activation='relu', input_shape=input_shape),layers.MaxPooling2D((2, 2)), layers.Conv2D(64, (3, 3), activation='relu'),layers.MaxPooling2D((2, 2)),layers.Conv2D(128,(3, 3), activation='relu'), layers.Flatten(), layers.Dense(128, activation='relu'), layers.Dense(4)]) 
+  model.compile(optimizer='adam', loss='mse')  
+return model 
+model = create_cnn((224, 224, 3)) 
+history = model.fit(train_generator, epochs=10, validation_data=valid_generator) 
+from sklearn.metrics import r2_score
+test_images, test_boxes = load_dataset('/path/to/test/annotations.csv', '/path/to/test', image_size) 
+predicted_boxes = model.predict(test_images) r_squared = r2_score(test_boxes, predicted_boxes) 
+print(f'R-squared value: {r_squared}') 
+import matplotlib.pyplot as plt  
+import matplotlib.patches as patches 
+def draw_bounding_box(image, box, color='red', thickness=2):  
+ymin, xmin, ymax, xmax = box (height, width, _) = image.shape 
+start_point = (int(xmin * width), int(ymin * height)) end_point = (int(xmax * width), int(ymax * height)) return cv2.rectangle(image, start_point, end_point, color, thickness)  
+def test_model_on_image(model, img_path, image_size): 
+  img = cv2.imread(img_path) 
+  img_resized = cv2.resize(img,image_size)/255.0  
+  predicted_box = model.predict(np.array([img_resized]))[0] 
+  boxed_img = draw_bounding_box(img, predicted_box) plt.figure(figsize=(10, 10)) 
+plt.imshow(cv2.cvtColor(boxed_img, cv2.COLOR_BGR2RGB))  
+plt.show() 
+test_model_on_image(model, '/path/to/test/image.jpg', image_size)
+          
